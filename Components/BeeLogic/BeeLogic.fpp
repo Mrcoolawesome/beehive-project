@@ -20,8 +20,8 @@ module Components {
         @ this will request the wii board driver gets 
         output port requestWeight: Bee.PingPort
 
-        @ Async input port to handle the weight data once the driver fetches it
-        async input port receiveWeight: Bee.WeightTelemetryPort
+        @ Sync input port to handle the weight data once the driver fetches it
+        sync input port receiveWeight: Bee.WeightTelemetryPort
 
         @ The current weight read from the Wii Board
         telemetry BoardWeight: F32 id 0 update always format "{.2f}"
