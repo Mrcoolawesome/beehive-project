@@ -1,9 +1,9 @@
+include "../Types.fpp"
 module Components {
     @ This is the main application manager for the project. It is active because it will be the invoker for everything.
     active component BeeLogic {
-
         @ RUN: This is for turning on the application or not to pull data
-        # TODO: make this happen by default 
+        # TODO: make it so that the application will be running by default (it will do this already if we run everything in the 'run' port) then this will main just be used to turn it back on if we use the STOP_RUNNING command to stop the application
         async command RUN opcode 0
 
         @ STOP_RUNNING: This is to stop BeeLogic from running at all
@@ -12,10 +12,17 @@ module Components {
         @ main input port for the application
         # this will run on every 'tick' given the rate group
         # NOTE: if we ever wanna get this to actually run off of a specific interval (e.g. 1hz) refrence what Josh did in the GASRATS project to make a rate group run off of the system clock
+        #   this is defined on line 22 in `BeeDeployment/Top/BeeDeploymentTopology.cpp`
         sync input port run: Svc.Sched
         # sync input ports run on the thread of the invoking component, not the component it was declared in
         # async input ports run on the thread of the port it was declared in -- hence why we're using it here because this is an active component with its own thread
         # for passive or queued components we would wanna run sync input ports in those so it runs on the invokers thread because that's what it'll do anyways if we were to do async input ports
+
+        @ this will request the wii board driver gets 
+        output port requestWeight: Bee.PingPort
+
+        @ Async input port to handle the weight data once the driver fetches it
+        async input port receiveWeight: Bee.WeightTelemetryPort
 
         ##############################################################################
         #### Uncomment the following examples to start customizing your component ####

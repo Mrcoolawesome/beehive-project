@@ -128,7 +128,7 @@ module BeeDeployment {
     }
 
     connections BeeDeployment {
-
+      
     }
 
   }
