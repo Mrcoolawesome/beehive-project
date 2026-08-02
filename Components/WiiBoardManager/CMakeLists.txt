@@ -21,8 +21,6 @@ register_fprime_library(
         "${CMAKE_CURRENT_LIST_DIR}/WiiBoardManager.cpp"
     DEPENDS
         Components
-        Drv/ByteStreamDriverModel
-        Fw_Buffer
 )
 
 ### Unit Tests ###

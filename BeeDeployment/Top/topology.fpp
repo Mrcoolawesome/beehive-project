@@ -32,6 +32,8 @@ module BeeDeployment {
     instance timer
     instance comDriver
     instance cmdSeq
+    instance BeeLogic
+    instance wiiBoardManager
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -119,6 +121,7 @@ module BeeDeployment {
       rateGroup3.RateGroupMemberOut[2] -> DataProducts.dpBufferManager.schedIn
       rateGroup3.RateGroupMemberOut[3] -> DataProducts.dpWriter.schedIn
       rateGroup3.RateGroupMemberOut[4] -> DataProducts.dpMgr.schedIn
+      rateGroup3.RateGroupMemberOut[5] -> BeeLogic.run
     }
 
     connections CdhCore_cmdSeq {
@@ -128,7 +131,9 @@ module BeeDeployment {
     }
 
     connections BeeDeployment {
-      
+      # BeeLogic drives WiiBoardManager polling, and WiiBoardManager feeds the latest weight back.
+      BeeLogic.requestWeight -> wiiBoardManager.pingIn
+      wiiBoardManager.weightOut -> BeeLogic.receiveWeight
     }
 
   }

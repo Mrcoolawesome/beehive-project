@@ -46,6 +46,11 @@ module BeeDeployment {
     stack size Default.STACK_SIZE \
     priority 40
 
+  instance BeeLogic: Components.BeeLogic base id 0x10005000 \
+    queue size Default.QUEUE_SIZE \
+    stack size Default.STACK_SIZE \
+    priority 39
+
   # ----------------------------------------------------------------------
   # Queued component instances
   # ----------------------------------------------------------------------
@@ -67,5 +72,7 @@ module BeeDeployment {
   # TcpServer: for running on the actual pi
   # TODO: I might be wrong about this and have this backwards
   instance comDriver: Drv.TcpClient base id 0x10014000
+
+  instance wiiBoardManager: Components.WiiBoardManager base id 0x10015000
 
 }

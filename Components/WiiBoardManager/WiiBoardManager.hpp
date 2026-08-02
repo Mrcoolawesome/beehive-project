@@ -9,6 +9,10 @@
 
 #include "Components/WiiBoardManager/WiiBoardManagerComponentAc.hpp"
 
+#include <mutex>
+#include <string>
+#include <unordered_map>
+
 namespace Components {
 
 class WiiBoardManager final : public WiiBoardManagerComponentBase {
@@ -31,14 +35,28 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
 
     //! Handler implementation for pingIn
     //!
-    //! Receives the trigger from BeeLogic
+    //! Polls the Wii Balance Board when BeeLogic requests an update
     void pingIn_handler(FwIndexType portNum,  //!< The port number
                         Bee::Ping data) override;
 
-    //! Handler implementation for dataIn
-    void dataIn_handler(FwIndexType portNum,
-              Fw::Buffer& recvBuffer,
-              const Drv::ByteStreamStatus& recvStatus) override;
+    //! Try to find and open the balance board input device
+    bool openBoard();
+
+    //! Drain pending input events and emit a new weight if available
+    void pollBoard();
+
+    //! Process a single EV_ABS event
+    void processAbsEvent(unsigned int code, int value);
+
+    //! Close the current board handle
+    void closeBoard();
+
+  private:
+    int m_boardFd;
+    std::string m_boardPath;
+    std::unordered_map<unsigned int, int> m_sensorValues;
+    F32 m_lastWeightKg;
+    std::mutex m_stateMutex;
 };
 
 }  // namespace Components
