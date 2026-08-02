@@ -19,8 +19,10 @@ register_fprime_library(
         "${CMAKE_CURRENT_LIST_DIR}/WiiBoardManager.fpp"
     SOURCES
         "${CMAKE_CURRENT_LIST_DIR}/WiiBoardManager.cpp"
-#   DEPENDS
-#       MyPackage_MyOtherModule
+    DEPENDS
+        Components
+        Drv/ByteStreamDriverModel
+        Fw_Buffer
 )
 
 ### Unit Tests ###

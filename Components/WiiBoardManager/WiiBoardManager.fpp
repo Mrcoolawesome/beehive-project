@@ -5,8 +5,14 @@ module Components {
         @ Receives the trigger from BeeLogic
         sync input port pingIn: Bee.PingPort
 
+        @ NEW: Receives raw bytes from the TCP (or UDP) driver
+        sync input port dataIn: Drv.ByteStreamData
+
         @ Sends the final weight calculation back to BeeLogic
         output port weightOut: Bee.WeightTelemetryPort
+
+        @ Returns used memory buffers to the system so we don't leak memory!
+        output port deallocate: Fw.BufferSend
 
         ##############################################################################
         #### Uncomment the following examples to start customizing your component ####

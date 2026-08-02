@@ -34,6 +34,11 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
     //! Receives the trigger from BeeLogic
     void pingIn_handler(FwIndexType portNum,  //!< The port number
                         Bee::Ping data) override;
+
+    //! Handler implementation for dataIn
+    void dataIn_handler(FwIndexType portNum,
+              Fw::Buffer& recvBuffer,
+              const Drv::ByteStreamStatus& recvStatus) override;
 };
 
 }  // namespace Components
