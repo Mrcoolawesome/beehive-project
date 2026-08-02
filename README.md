@@ -83,3 +83,15 @@ To set them properly:
 * Put a known test weight on the board and compare the reading after tare correction. Adjust `scaleFactor` so the adjusted reading matches the known weight.
 
 Example: if the board reads about 3.8 kg when empty, and about 5.8 kg when you place a 5 lb test weight on it, you would first set `tareKg` to 3.8. Then compute `scaleFactor` from the corrected reading using `knownWeight / (rawWeightKg - tareKg)`. The result will not be perfect across the full range if the board is nonlinear, but it is the correct way to apply a single linear scale factor.
+
+## 6. Data Products
+
+The live `BoardWeight` telemetry still goes to the normal telemetry stream for immediate viewing, but the 60-second board session is also archived as a data product.
+
+The board manager collects one calibrated sample per second during the connected minute, then packages those samples into a data product and sends it through the Data Products subtopology. That is the right place for saved session data because data products are meant for buffered, retrievable records rather than only real-time display.
+
+In practice, this means:
+
+* Use telemetry when you want the current weight value in real time.
+* Use data products when you want the full one-minute capture saved for later inspection in GDS.
+* The archive is sent after the timed session ends, not continuously during the minute.

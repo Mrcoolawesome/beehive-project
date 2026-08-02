@@ -2,6 +2,8 @@ module Components {
     @ This will be what actually gets the data from the driver.
     passive component WiiBoardManager {
 
+    constant SESSION_SAMPLE_CAPACITY = 60
+
         @ Runs the Bluetooth reconnect loop once a second.
         sync input port run: Svc.Sched
 
@@ -10,6 +12,15 @@ module Components {
 
         @ Sends the final weight calculation back to BeeLogic
         output port weightOut: Bee.WeightTelemetryPort
+
+        @ Requests a data product container for the 1-minute session archive
+        product request port productRequestOut
+
+        @ Receives the allocated data product container
+        sync product recv port productRecvIn
+
+        @ Sends the completed session archive to the data product manager
+        product send port productSendOut
 
         @ Raised when the reconnect loop is actively retrying Bluetooth pairing and connection
         event BluetoothReconnectAttempt() severity activity high format "Retrying Wii Balance Board Bluetooth connection"
@@ -80,6 +91,21 @@ module Components {
 
         @ Scale factor applied after tare correction
         param scaleFactor: F32 default 1.30 id 1
+
+        @ Session archive sample buffer
+        array WeightSessionSamples = [SESSION_SAMPLE_CAPACITY] F32
+
+        @ Archived 1-minute capture from the board
+        struct WeightSession {
+            sampleCount: U32
+            samples: WeightSessionSamples
+        }
+
+        @ Data product record for the 1-minute capture
+        product record WeightSessionRecord: WeightSession id 0
+
+        @ Data product container used to send the archived session to GDS
+        product container WeightSessionContainer id 0 default priority 10
 
     }
 }

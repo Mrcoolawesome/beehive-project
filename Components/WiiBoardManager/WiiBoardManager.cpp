@@ -37,8 +37,12 @@ WiiBoardManager ::WiiBoardManager(const char* const compName)
             m_scaleFactor(1.30f),
             m_connectionEventRaised(false),
             m_sessionActive(false),
+            m_archivePending(false),
             m_weightDirty(false),
-            m_connectedSecondsRemaining(0U) {}
+            m_connectedSecondsRemaining(0U),
+            m_sessionSamples{},
+            m_sessionSampleCount(0U),
+            m_sessionDpContainer() {}
 
 WiiBoardManager ::~WiiBoardManager() { this->closeBoard(); }
 
@@ -52,6 +56,8 @@ void WiiBoardManager ::run_handler(FwIndexType portNum, U32 context) {
     this->pollBoard();
 
     if (this->m_boardFd >= 0 && this->m_sessionActive) {
+        this->captureSessionSample();
+
         if (this->m_connectedSecondsRemaining > 0U) {
             --this->m_connectedSecondsRemaining;
         }
@@ -122,8 +128,35 @@ void WiiBoardManager ::notifyConnectedIfNeeded() {
 
 void WiiBoardManager ::startConnectedSession() {
     this->m_sessionActive = true;
+    this->m_archivePending = false;
     this->m_connectedSecondsRemaining = CONNECTED_SESSION_SECONDS;
+    this->m_sessionSampleCount = 0U;
+    this->m_sessionSamples.fill(0.0f);
     this->log_ACTIVITY_HI_BluetoothSessionStarted();
+}
+
+void WiiBoardManager ::captureSessionSample() {
+    std::lock_guard<std::mutex> lock(this->m_stateMutex);
+    if (!this->m_sessionActive || this->m_archivePending || this->m_sessionSampleCount >= SESSION_SAMPLE_CAPACITY) {
+        return;
+    }
+
+    this->m_sessionSamples[this->m_sessionSampleCount] = this->m_lastWeightKg;
+    ++this->m_sessionSampleCount;
+}
+
+void WiiBoardManager ::requestSessionArchive() {
+    if (this->m_archivePending || this->m_sessionSampleCount == 0U) {
+        return;
+    }
+
+    if (!this->isConnected_productRequestOut_OutputPort(0) || !this->isConnected_productSendOut_OutputPort(0)) {
+        return;
+    }
+
+    const FwSizeType dpSize = Components::WiiBoardManager_WeightSession::SERIALIZED_SIZE + sizeof(FwDpIdType);
+    this->m_archivePending = true;
+    this->dpRequest_WeightSessionContainer(dpSize);
 }
 
 void WiiBoardManager ::disconnectBoard() {
@@ -133,8 +166,33 @@ void WiiBoardManager ::disconnectBoard() {
     const char* commands[] = {disconnectCommand.c_str()};
     (void)this->sendBluetoothCommands(commands, 1U);
 
+    this->requestSessionArchive();
     this->log_WARNING_HI_BluetoothDisconnected();
     this->closeBoard();
+}
+
+void WiiBoardManager ::dpRecv_WeightSessionContainer_handler(DpContainer& container, Fw::Success::T status) {
+    if (status != Fw::Success::SUCCESS) {
+        this->m_archivePending = false;
+        return;
+    }
+
+    this->m_sessionDpContainer = container;
+    this->m_sessionDpContainer.setPriority(FwDpPriorityType(10));
+
+    Components::WiiBoardManager_WeightSessionSamples samples;
+    for (U32 i = 0; i < SESSION_SAMPLE_CAPACITY; ++i) {
+        samples[i] = this->m_sessionSamples[i];
+    }
+
+    Components::WiiBoardManager_WeightSession session(this->m_sessionSampleCount, samples);
+    Fw::SerializeStatus serializeStatus = this->m_sessionDpContainer.serializeRecord_WeightSessionRecord(session);
+    FW_ASSERT(serializeStatus == Fw::FW_SERIALIZE_OK, static_cast<FwAssertArgType>(serializeStatus));
+
+    this->dpSend(this->m_sessionDpContainer);
+    this->m_archivePending = false;
+    this->m_sessionSampleCount = 0U;
+    this->m_sessionSamples.fill(0.0f);
 }
 
 void WiiBoardManager ::parameterUpdated(FwPrmIdType id) {
@@ -155,7 +213,7 @@ void WiiBoardManager ::parameterUpdated(FwPrmIdType id) {
 }
 
 void WiiBoardManager ::maintainBluetoothConnection() {
-    if (this->m_boardFd >= 0) {
+    if (this->m_boardFd >= 0 || this->m_archivePending) {
         return;
     }
 
@@ -274,6 +332,7 @@ void WiiBoardManager ::emitWeight() {
 }
 
 void WiiBoardManager ::handleConnectionLost() {
+    this->requestSessionArchive();
     this->log_WARNING_HI_BluetoothConnectionLost();
     this->log_WARNING_HI_BluetoothDisconnected();
     this->closeBoard();

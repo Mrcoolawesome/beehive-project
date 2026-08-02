@@ -137,6 +137,13 @@ module BeeDeployment {
       wiiBoardManager.weightOut -> BeeLogic.receiveWeight
     }
 
+    connections BeeDeployment_DataProducts {
+      # WiiBoardManager archives the 1-minute session into Data Products for GDS retrieval.
+      wiiBoardManager.productRequestOut -> DataProducts.Subtopology.productRequestIn
+      DataProducts.Subtopology.productResponseOut -> wiiBoardManager.productRecvIn
+      wiiBoardManager.productSendOut -> DataProducts.Subtopology.productSendIn
+    }
+
   }
 
 }
