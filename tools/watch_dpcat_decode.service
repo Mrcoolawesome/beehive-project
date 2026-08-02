@@ -1,0 +1,15 @@
+[Unit]
+Description=Beehive DpCat auto-decoder
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/devins/Desktop/beehive-project
+ExecStart=/home/devins/Desktop/beehive-project/fprime-venv/bin/python /home/devins/Desktop/beehive-project/tools/watch_dpcat_decode.py --watch-dir /home/devins/Desktop/beehive-project/DpCat --dictionary /home/devins/Desktop/beehive-project/build-artifacts/Linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -95,3 +95,9 @@ In practice, this means:
 * Use telemetry when you want the current weight value in real time.
 * Use data products when you want the full one-minute capture saved for later inspection in GDS.
 * The archive is sent after the timed session ends, not continuously during the minute.
+
+For the GDS/server machine, you can run [tools/watch_dpcat_decode.py](tools/watch_dpcat_decode.py) from the project venv to watch `DpCat/` and auto-decode any new `.fdp` files into sibling JSON files.
+By default it uses `build-artifacts/Linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json`; change `Linux` to the matching build platform name if you are decoding a different build.
+
+If you want it to start automatically for a user, run [tools/install_watch_dpcat_decode_service.sh](tools/install_watch_dpcat_decode_service.sh). That script creates a per-user systemd service from the current checkout, reloads systemd, and enables/starts the watcher.
+After installing it, the service name is `beehive-dpcat-decode.service` under `systemctl --user`. If you want it to keep running after logout, enable lingering for that user with `loginctl enable-linger <user>`.

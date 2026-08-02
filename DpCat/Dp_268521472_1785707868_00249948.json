@@ -1,0 +1,461 @@
+{
+  "Header": {
+    "PacketDescriptor": {
+      "format": "{}",
+      "description": "The F Prime packet descriptor",
+      "value": 5,
+      "type": "U16"
+    },
+    "Id": {
+      "format": "{}",
+      "description": "The container ID",
+      "value": 268521472,
+      "type": "U32"
+    },
+    "Priority": {
+      "format": "{}",
+      "description": "The container priority",
+      "value": 10,
+      "type": "U32"
+    },
+    "Time": {
+      "format": "{}",
+      "description": "Fw.Time object",
+      "type": "Time",
+      "base": 2,
+      "context": 0,
+      "seconds": 1785707868,
+      "microseconds": 249948
+    },
+    "ProcTypes": {
+      "format": "{}",
+      "description": "Processing types bit mask",
+      "value": 0,
+      "type": "U8"
+    },
+    "UserData": {
+      "format": "{}",
+      "description": "User-configurable data",
+      "name": "UserData",
+      "type": "UserData",
+      "size": 32,
+      "values": [
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        },
+        {
+          "value": 0,
+          "type": "U8"
+        }
+      ]
+    },
+    "DpState": {
+      "format": "{}",
+      "description": "Data product state",
+      "value": "UNTRANSMITTED",
+      "type": "Fw.DpState"
+    },
+    "DataSize": {
+      "format": "{}",
+      "description": "Size of data payload in bytes",
+      "value": 248,
+      "type": "U16"
+    },
+    "Checksum": {
+      "format": "{}",
+      "description": "Header checksum",
+      "value": 3639631793,
+      "type": "U32"
+    }
+  },
+  "Records": [
+    {
+      "Record": {
+        "record_id": 268521472,
+        "record_name": "BeeDeployment.wiiBoardManager.WeightSessionRecord",
+        "record_type_name": "Components.WiiBoardManager.WeightSession",
+        "record_type": "<class 'abc.Components.WiiBoardManager.WeightSession'>",
+        "is_array": false,
+        "description": "Data product record for the 1-minute capture"
+      },
+      "Data": {
+        "sampleCount": {
+          "format": "{}",
+          "description": "",
+          "value": 60,
+          "type": "U32"
+        },
+        "samples": {
+          "format": "{}",
+          "description": "",
+          "name": "Components.WiiBoardManager.WeightSessionSamples",
+          "type": "Components.WiiBoardManager.WeightSessionSamples",
+          "size": 60,
+          "values": [
+            {
+              "value": 0.0,
+              "type": "F32"
+            },
+            {
+              "value": 54.76900100708008,
+              "type": "F32"
+            },
+            {
+              "value": 55.4319953918457,
+              "type": "F32"
+            },
+            {
+              "value": 55.26300048828125,
+              "type": "F32"
+            },
+            {
+              "value": 55.21099853515625,
+              "type": "F32"
+            },
+            {
+              "value": 55.97800064086914,
+              "type": "F32"
+            },
+            {
+              "value": 55.172000885009766,
+              "type": "F32"
+            },
+            {
+              "value": 55.6140022277832,
+              "type": "F32"
+            },
+            {
+              "value": 54.599998474121094,
+              "type": "F32"
+            },
+            {
+              "value": 56.121002197265625,
+              "type": "F32"
+            },
+            {
+              "value": 55.60099792480469,
+              "type": "F32"
+            },
+            {
+              "value": 55.18499755859375,
+              "type": "F32"
+            },
+            {
+              "value": 55.66599655151367,
+              "type": "F32"
+            },
+            {
+              "value": 55.65299987792969,
+              "type": "F32"
+            },
+            {
+              "value": 55.21099853515625,
+              "type": "F32"
+            },
+            {
+              "value": 56.21200180053711,
+              "type": "F32"
+            },
+            {
+              "value": 56.797000885009766,
+              "type": "F32"
+            },
+            {
+              "value": 56.39400100708008,
+              "type": "F32"
+            },
+            {
+              "value": 56.40699768066406,
+              "type": "F32"
+            },
+            {
+              "value": 55.380001068115234,
+              "type": "F32"
+            },
+            {
+              "value": 55.41899871826172,
+              "type": "F32"
+            },
+            {
+              "value": 55.67900085449219,
+              "type": "F32"
+            },
+            {
+              "value": 55.354000091552734,
+              "type": "F32"
+            },
+            {
+              "value": 55.62699890136719,
+              "type": "F32"
+            },
+            {
+              "value": 55.34099578857422,
+              "type": "F32"
+            },
+            {
+              "value": 55.5099983215332,
+              "type": "F32"
+            },
+            {
+              "value": 55.62699890136719,
+              "type": "F32"
+            },
+            {
+              "value": 55.354000091552734,
+              "type": "F32"
+            },
+            {
+              "value": 55.132999420166016,
+              "type": "F32"
+            },
+            {
+              "value": 56.224998474121094,
+              "type": "F32"
+            },
+            {
+              "value": 54.76900100708008,
+              "type": "F32"
+            },
+            {
+              "value": 55.5880012512207,
+              "type": "F32"
+            },
+            {
+              "value": 55.249996185302734,
+              "type": "F32"
+            },
+            {
+              "value": 56.263999938964844,
+              "type": "F32"
+            },
+            {
+              "value": 55.354000091552734,
+              "type": "F32"
+            },
+            {
+              "value": 55.314998626708984,
+              "type": "F32"
+            },
+            {
+              "value": 55.327999114990234,
+              "type": "F32"
+            },
+            {
+              "value": 56.28999710083008,
+              "type": "F32"
+            },
+            {
+              "value": 54.87299728393555,
+              "type": "F32"
+            },
+            {
+              "value": 55.41899871826172,
+              "type": "F32"
+            },
+            {
+              "value": 55.990997314453125,
+              "type": "F32"
+            },
+            {
+              "value": 55.249996185302734,
+              "type": "F32"
+            },
+            {
+              "value": 55.2239990234375,
+              "type": "F32"
+            },
+            {
+              "value": 56.263999938964844,
+              "type": "F32"
+            },
+            {
+              "value": 55.106998443603516,
+              "type": "F32"
+            },
+            {
+              "value": 56.095001220703125,
+              "type": "F32"
+            },
+            {
+              "value": 55.02899932861328,
+              "type": "F32"
+            },
+            {
+              "value": 56.66699981689453,
+              "type": "F32"
+            },
+            {
+              "value": 55.119998931884766,
+              "type": "F32"
+            },
+            {
+              "value": 56.15999984741211,
+              "type": "F32"
+            },
+            {
+              "value": 55.44499969482422,
+              "type": "F32"
+            },
+            {
+              "value": 55.63999557495117,
+              "type": "F32"
+            },
+            {
+              "value": 55.63999557495117,
+              "type": "F32"
+            },
+            {
+              "value": 55.62699890136719,
+              "type": "F32"
+            },
+            {
+              "value": 56.121002197265625,
+              "type": "F32"
+            },
+            {
+              "value": 55.834999084472656,
+              "type": "F32"
+            },
+            {
+              "value": 55.5880012512207,
+              "type": "F32"
+            },
+            {
+              "value": 56.016998291015625,
+              "type": "F32"
+            },
+            {
+              "value": 55.54899597167969,
+              "type": "F32"
+            },
+            {
+              "value": 55.4319953918457,
+              "type": "F32"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
