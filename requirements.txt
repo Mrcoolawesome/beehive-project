@@ -3,3 +3,6 @@
 
 # Local requirements:
 -r ./lib/fprime/requirements.txt
+
+# Wii Balance Board dependencies:
+evdev

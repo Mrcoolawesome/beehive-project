@@ -60,6 +60,14 @@ class BeeLogic final : public BeeLogicComponentBase {
     void STOP_RUNNING_cmdHandler(FwOpcodeType opCode,  //!< The opcode
                                  U32 cmdSeq            //!< The command sequence number
                                  ) override;
+
+  private:
+    // ----------------------------------------------------------------------
+    // Member variables
+    // ----------------------------------------------------------------------
+    
+    //! Flag to control if the run handler should execute
+    bool m_isRunning;
 };
 
 }  // namespace Components

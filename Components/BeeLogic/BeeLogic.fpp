@@ -12,7 +12,7 @@ module Components {
         # this will run on every 'tick' given the rate group
         # NOTE: if we ever wanna get this to actually run off of a specific interval (e.g. 1hz) refrence what Josh did in the GASRATS project to make a rate group run off of the system clock
         #   this is defined on line 22 in `BeeDeployment/Top/BeeDeploymentTopology.cpp`
-        sync input port run: Svc.Sched
+        async input port run: Svc.Sched
         # sync input ports run on the thread of the invoking component, not the component it was declared in
         # async input ports run on the thread of the port it was declared in -- hence why we're using it here because this is an active component with its own thread
         # for passive or queued components we would wanna run sync input ports in those so it runs on the invokers thread because that's what it'll do anyways if we were to do async input ports
@@ -22,6 +22,9 @@ module Components {
 
         @ Async input port to handle the weight data once the driver fetches it
         async input port receiveWeight: Bee.WeightTelemetryPort
+
+        @ The current weight read from the Wii Board
+        telemetry BoardWeight: F32 id 0 update always format "{.2f}"
 
         ##############################################################################
         #### Uncomment the following examples to start customizing your component ####
