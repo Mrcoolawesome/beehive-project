@@ -50,6 +50,7 @@ Following the mandated architecture, the Wii Balance Board integration will be s
 * Receives raw I/O from the Driver.
 * Applies calibration offsets (tare weight).
 * Filters sensor noise and converts raw bytes into standardized weight metrics (e.g., kilograms or pounds).
+* When the board is discovered, it stays connected for a timed 60-second sampling window, then the manager disconnects it so the board powers off and the system returns to waiting mode until the board is turned on again.
 
 
 * **Wii Board Application:**
@@ -57,3 +58,28 @@ Following the mandated architecture, the Wii Balance Board integration will be s
 * Determines sampling and reporting rates.
 * Handles high-level business logic (e.g., triggering alerts if the hive weight drops rapidly).
 * Packages and dispatches the final telemetry packets to the F' communications layer for streaming to the server.
+
+## 5. Wii Board Calibration
+
+The Wii board manager applies calibration in this order:
+
+1. Sum the four raw sensor values from the Linux input device.
+2. Convert that sum into the board's raw kilogram-like value by dividing by 100.
+3. Subtract the tare offset from the empty board.
+4. Multiply the result by the scale factor.
+
+The formula in code is:
+
+`calibratedWeightKg = max(0, (rawWeightKg - tareKg) * scaleFactor)`
+
+Where:
+
+* `tareKg` removes the resting bias when the board is empty.
+* `scaleFactor` corrects the linear gain so the board matches a known reference weight.
+
+To set them properly:
+
+* Put the board on a flat surface with nothing on it and read the resting value. Set `tareKg` to that number.
+* Put a known test weight on the board and compare the reading after tare correction. Adjust `scaleFactor` so the adjusted reading matches the known weight.
+
+Example: if the board reads about 3.8 kg when empty, and about 5.8 kg when you place a 5 lb test weight on it, you would first set `tareKg` to 3.8. Then compute `scaleFactor` from the corrected reading using `knownWeight / (rawWeightKg - tareKg)`. The result will not be perfect across the full range if the board is nonlinear, but it is the correct way to apply a single linear scale factor.

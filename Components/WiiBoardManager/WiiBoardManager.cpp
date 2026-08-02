@@ -21,6 +21,7 @@ namespace {
 
 constexpr const char* BOARD_NAME = "Nintendo Wii Remote Balance Board";
 constexpr const char* BOARD_ADDRESS = "00:1F:32:22:03:BF";
+constexpr U32 CONNECTED_SESSION_SECONDS = 60U;
 
 }  // namespace
 
@@ -32,8 +33,12 @@ WiiBoardManager ::WiiBoardManager(const char* const compName)
         : WiiBoardManagerComponentBase(compName),
             m_boardFd(-1),
             m_lastWeightKg(0.0f),
+            m_tareKg(3.80f),
+            m_scaleFactor(1.30f),
             m_connectionEventRaised(false),
-            m_weightDirty(false) {}
+            m_sessionActive(false),
+            m_weightDirty(false),
+            m_connectedSecondsRemaining(0U) {}
 
 WiiBoardManager ::~WiiBoardManager() { this->closeBoard(); }
 
@@ -45,6 +50,16 @@ void WiiBoardManager ::run_handler(FwIndexType portNum, U32 context) {
     (void)portNum;
     (void)context;
     this->pollBoard();
+
+    if (this->m_boardFd >= 0 && this->m_sessionActive) {
+        if (this->m_connectedSecondsRemaining > 0U) {
+            --this->m_connectedSecondsRemaining;
+        }
+
+        if (this->m_connectedSecondsRemaining == 0U) {
+            this->disconnectBoard();
+        }
+    }
 }
 
 void WiiBoardManager ::pingIn_handler(FwIndexType portNum, Bee::Ping data) {
@@ -105,6 +120,40 @@ void WiiBoardManager ::notifyConnectedIfNeeded() {
     }
 }
 
+void WiiBoardManager ::startConnectedSession() {
+    this->m_sessionActive = true;
+    this->m_connectedSecondsRemaining = CONNECTED_SESSION_SECONDS;
+    this->log_ACTIVITY_HI_BluetoothSessionStarted();
+}
+
+void WiiBoardManager ::disconnectBoard() {
+    this->log_ACTIVITY_HI_BluetoothAutoDisconnect();
+
+    const std::string disconnectCommand = std::string("disconnect ") + BOARD_ADDRESS;
+    const char* commands[] = {disconnectCommand.c_str()};
+    (void)this->sendBluetoothCommands(commands, 1U);
+
+    this->log_WARNING_HI_BluetoothDisconnected();
+    this->closeBoard();
+}
+
+void WiiBoardManager ::parameterUpdated(FwPrmIdType id) {
+    switch (id) {
+        case PARAMID_TAREKG: {
+            Fw::ParamValid valid;
+            this->m_tareKg = this->paramGet_tareKg(valid);
+            break;
+        }
+        case PARAMID_SCALEFACTOR: {
+            Fw::ParamValid valid;
+            this->m_scaleFactor = this->paramGet_scaleFactor(valid);
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 void WiiBoardManager ::maintainBluetoothConnection() {
     if (this->m_boardFd >= 0) {
         return;
@@ -154,6 +203,7 @@ bool WiiBoardManager ::openBoard() {
             std::strstr(deviceName, BOARD_NAME) != nullptr) {
             this->m_boardFd = fd;
             this->m_boardPath = candidatePath;
+            this->startConnectedSession();
             this->notifyConnectedIfNeeded();
             ::closedir(dir);
             return true;
@@ -180,6 +230,8 @@ void WiiBoardManager ::closeBoard() {
 
     this->m_boardPath.clear();
     this->m_connectionEventRaised = false;
+    this->m_sessionActive = false;
+    this->m_connectedSecondsRemaining = 0U;
 }
 
 void WiiBoardManager ::processAbsEvent(unsigned int code, int value) {
@@ -193,7 +245,13 @@ void WiiBoardManager ::processAbsEvent(unsigned int code, int value) {
             rawWeight += sensorEntry.second;
         }
 
-        this->m_lastWeightKg = static_cast<F32>(rawWeight) / 100.0f;
+        F32 rawWeightKg = static_cast<F32>(rawWeight) / 100.0f;
+        F32 calibratedWeightKg = (rawWeightKg - this->m_tareKg) * this->m_scaleFactor;
+        if (calibratedWeightKg < 0.0f) {
+            calibratedWeightKg = 0.0f;
+        }
+
+        this->m_lastWeightKg = calibratedWeightKg;
     }
 }
 

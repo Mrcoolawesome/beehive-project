@@ -23,6 +23,12 @@ module Components {
         @ Raised when the manager has opened the board input device and is receiving updates
         event BluetoothConnected() severity activity high format "Wii Balance Board connected"
 
+        @ Raised when the manager begins its timed one-minute data collection window
+        event BluetoothSessionStarted() severity activity high format "Wii Balance Board session started"
+
+        @ Raised when the manager intentionally disconnects the board after the timed window expires
+        event BluetoothAutoDisconnect() severity activity high format "Disconnecting Wii Balance Board after timed session"
+
         @ Raised when the manager detects the board dropped off after it had been connected
         event BluetoothDisconnected() severity warning high format "Wii Balance Board disconnected"
 
@@ -57,6 +63,9 @@ module Components {
         @ Enables event handling
         import Fw.Event
 
+        @ Enables command handling for parameter updates
+        import Fw.Command
+
         @ Enables telemetry channels handling
         import Fw.Channel
 
@@ -65,6 +74,12 @@ module Components {
 
         @Port to set the value of a parameter
         param set port prmSetOut
+
+        @ Empty-board tare in kilograms
+        param tareKg: F32 default 3.80 id 0
+
+        @ Scale factor applied after tare correction
+        param scaleFactor: F32 default 1.30 id 1
 
     }
 }

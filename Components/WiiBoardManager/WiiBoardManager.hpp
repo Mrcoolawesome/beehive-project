@@ -82,13 +82,26 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
     //! Mark the board as connected and raise the connection event once
     void notifyConnectedIfNeeded();
 
+    //! Start a new timed connected session
+    void startConnectedSession();
+
+    //! End the current connected session and disconnect the board over bluetooth
+    void disconnectBoard();
+
+    //! Update cached calibration values when parameters change
+    void parameterUpdated(FwPrmIdType id) override;
+
   private:
     int m_boardFd;
     std::string m_boardPath;
     std::unordered_map<unsigned int, int> m_sensorValues;
     F32 m_lastWeightKg;
+    F32 m_tareKg;
+    F32 m_scaleFactor;
     bool m_connectionEventRaised;
+    bool m_sessionActive;
     bool m_weightDirty;
+    U32 m_connectedSecondsRemaining;
     std::mutex m_stateMutex;
 };
 
