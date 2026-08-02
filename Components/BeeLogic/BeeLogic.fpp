@@ -1,4 +1,3 @@
-include "../Types.fpp"
 module Components {
     @ This is the main application manager for the project. It is active because it will be the invoker for everything.
     active component BeeLogic {
