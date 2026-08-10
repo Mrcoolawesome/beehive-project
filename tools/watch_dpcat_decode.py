@@ -97,6 +97,18 @@ def main() -> int:
 
     last_signatures: dict[Path, tuple[int, int]] = {}
     stable_counts: dict[Path, int] = {}
+    # Which (size, mtime) signature each .fdp was last successfully decoded
+    # at. This — not "does the .json output still exist" — is the source of
+    # truth for "have I already decoded this." A downstream consumer of the
+    # decoded JSON (e.g. a watcher that ingests it into a database) may move
+    # or delete that output once it's done with it; if this script re-checked
+    # the filesystem for its own output every poll, it would see that as
+    # "not decoded yet" and redecode forever, in lockstep with however often
+    # the consumer clears it out. Remembering what we've already decoded
+    # in-process avoids that race entirely, at the cost of redecoding once
+    # more per file if this script itself restarts — a bounded one-time
+    # catch-up, not a loop.
+    decoded_signatures: dict[Path, tuple[int, int]] = {}
 
     while True:
         if not watch_dir.is_dir():
@@ -113,6 +125,7 @@ def main() -> int:
             if path not in current_paths:
                 last_signatures.pop(path, None)
                 stable_counts.pop(path, None)
+                decoded_signatures.pop(path, None)
 
         for path in current_files:
             try:
@@ -128,16 +141,12 @@ def main() -> int:
                 continue
 
             stable_counts[path] = stable_counts.get(path, 0) + 1
-            output_file = path.with_suffix(".json")
-            try:
-                output_exists = output_file.exists()
-                output_is_current = output_exists and output_file.stat().st_mtime_ns >= stat_result.st_mtime_ns
-            except FileNotFoundError:
-                output_is_current = False
+            already_decoded = decoded_signatures.get(path) == signature
 
-            if stable_counts[path] >= 1 and not output_is_current:
+            if stable_counts[path] >= 1 and not already_decoded:
                 try:
                     decode_file(path, dictionary)
+                    decoded_signatures[path] = signature
                 except subprocess.CalledProcessError as error:
                     print(f"Failed to decode {path.name}: {error}", file=sys.stderr)
 
