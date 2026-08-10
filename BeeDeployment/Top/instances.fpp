@@ -71,7 +71,7 @@ module BeeDeployment {
   # TcpClient: for running in local dev environment because we want the local build to act as the client & server which it will when we run the GDS
   # TcpServer: for running on the actual pi
   # TODO: I might be wrong about this and have this backwards
-  instance comDriver: Drv.TcpClient base id 0x10014000
+  instance comDriver: Drv.TcpServer base id 0x10014000
 
   instance wiiBoardManager: Components.WiiBoardManager base id 0x10015000
 
