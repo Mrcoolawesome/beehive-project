@@ -97,7 +97,47 @@ In practice, this means:
 * The archive is sent after the timed session ends, not continuously during the minute.
 
 For the GDS/server machine, you can run [tools/watch_dpcat_decode.py](tools/watch_dpcat_decode.py) from the project venv to watch `DpCat/` and auto-decode any new `.fdp` files into sibling JSON files.
-By default it uses `build-artifacts/Linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json`; change `Linux` to the matching build platform name if you are decoding a different build.
+By default it uses `build-artifacts/arm-hf-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json`, matching the 32-bit ARM (Raspberry Pi) deployment build that actually runs on the hive node; pass `--dictionary` to point at a different build platform's dictionary (e.g. `Linux` for the native dev build) if needed.
 
 If you want it to start automatically for a user, run [tools/install_watch_dpcat_decode_service.sh](tools/install_watch_dpcat_decode_service.sh). That script creates a per-user systemd service from the current checkout, reloads systemd, and enables/starts the watcher.
 After installing it, the service name is `beehive-dpcat-decode.service` under `systemctl --user`. If you want it to keep running after logout, enable lingering for that user with `loginctl enable-linger <user>`.
+
+**This native/systemd path and the containerized `decoder` service below do the exact same job against the same `DpCat/` directory — run one or the other, not both.** If you're running the Docker stack (below), stop/disable the systemd service first: `systemctl --user disable --now beehive-dpcat-decode.service`.
+
+## 7. Running the GDS in Docker
+
+The GDS/server side can run in a container instead of the local venv. Build the ARM deployment on the host first (the container only reads its output, it does not build):
+
+```
+fprime-util build arm-hf-linux
+```
+
+Then start the GDS:
+
+```
+docker compose up -d --build
+```
+
+This runs `fprime-gds --no-app` (the flight binary runs on the Raspberry Pi itself, not in the container) and publishes:
+
+* `50000/tcp` - the comm link the Pi's `BeeDeployment` binary connects into (`./BeeDeployment -a <this-host-ip> -p 50000`)
+* `5000/tcp` - the GDS web GUI, at `http://<this-host-ip>:5000`
+
+Volumes keep real data on the host instead of the container's ephemeral filesystem:
+
+* `./build-artifacts` (read-only) - supplies the dictionary/hashes built above
+* `./DpCat` - where downlinked data products land, the same directory `tools/watch_dpcat_decode.py` already watches
+* `./logs` - GDS run logs
+
+The same `docker compose up -d --build` also starts a `decoder` service — the
+containerized equivalent of `tools/watch_dpcat_decode.py` (see the note in
+section 6 above about not running both this and the systemd service at the
+same time). It reuses the `gds` image rather than needing its own
+Dockerfile, with `tools/`, `build-artifacts/`, and `DpCat/` bind-mounted in;
+`docker-compose.yml`'s `decoder` service has the details. This is also the
+service the [beehive-monitoring-app](https://github.com/Mrcoolawesome/beehive-monitoring-app)
+dashboard's own `docker-compose.yml` pulls in via `include:`, so that
+project's `docker compose up` brings up GDS + decoder + the dashboard
+together in one command.
+
+Stop it with `docker compose down`.

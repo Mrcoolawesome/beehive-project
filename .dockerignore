@@ -1,0 +1,8 @@
+.git
+fprime-venv
+build-fprime-automatic-*
+build-artifacts
+logs
+DpCat
+lib/fprime/googletest
+lib/fprime/docs

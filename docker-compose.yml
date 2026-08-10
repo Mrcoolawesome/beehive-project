@@ -1,0 +1,56 @@
+services:
+  gds:
+    # Tagged explicitly (rather than letting Compose pick a default name) so
+    # the `decoder` service below can reuse this exact image instead of
+    # triggering a second, separate build of the same Dockerfile.
+    image: beehive-gds:latest
+    build:
+      context: .
+      args:
+        UID: "1000"
+        GID: "1000"
+    container_name: beehive-gds
+    ports:
+      - "50000:50000"  # comm link for the Raspberry Pi's BeeDeployment binary to connect into
+      - "5000:5000"    # GDS web GUI
+    volumes:
+      # Dictionary/hashes built on the host via `fprime-util build arm-hf-linux` (see README).
+      # Read-only: the container only reads the deployment's dictionary, it never rebuilds it.
+      - ./build-artifacts:/app/build-artifacts:ro
+      # Downlinked data products land here, on real host disk, matching the DpCat/ directory
+      # already watched by tools/watch_dpcat_decode.py.
+      - ./DpCat:/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+
+  # GDS (above) only writes the raw .fdp data-product files it downlinks
+  # from the Pi into DpCat/ — turning those into the sibling .json files
+  # anything downstream (e.g. the beehive-monitoring-app watcher) actually
+  # reads is a separate decode step, done here by tools/watch_dpcat_decode.py.
+  # That script isn't baked into the image itself (the Dockerfile only
+  # installs the pip-installed fprime tooling, not this repo's own tools/
+  # directory), so it's bind-mounted in read-only instead — reusing the gds
+  # image rather than adding a second Dockerfile to maintain.
+  decoder:
+    image: beehive-gds:latest
+    container_name: beehive-dpcat-decoder
+    # Overrides the image's `ENTRYPOINT ["fprime-gds"]` (see Dockerfile) —
+    # this container runs the decoder script instead of the GDS server.
+    entrypoint: ["python3", "tools/watch_dpcat_decode.py"]
+    environment:
+      # Without this, Python fully buffers stdout when it isn't attached to
+      # a TTY (true of any container's default stdout) and the script's
+      # print() calls never get flushed to `docker logs` — the process runs
+      # fine either way, but silently, which makes it look hung/broken.
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./tools:/app/tools:ro
+      # Same dictionary the GDS service uses, needed to decode telemetry
+      # field names/types out of the raw .fdp bytes.
+      - ./build-artifacts:/app/build-artifacts:ro
+      # Mounted at /app/DpCat (not /data, unlike the gds service above) —
+      # the script's default paths assume it's sitting next to a normal
+      # DpCat/ directory at the repo root, same as running it locally from
+      # the venv. Read-write: this is where the decoded .json files land.
+      - ./DpCat:/app/DpCat
+    restart: unless-stopped

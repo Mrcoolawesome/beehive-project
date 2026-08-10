@@ -18,7 +18,13 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
 DEFAULT_WATCH_DIR = REPO_ROOT / "DpCat"
-DEFAULT_DICTIONARY = REPO_ROOT / "build-artifacts/Linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
+DEFAULT_DICTIONARY = REPO_ROOT / "build-artifacts/arm-hf-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
+
+# Resolve fprime-dp next to the running interpreter first so this still works when
+# launched outside an activated venv shell (e.g. under systemd, where PATH is minimal).
+FPRIME_DP = Path(sys.executable).parent / "fprime-dp"
+if not FPRIME_DP.is_file():
+    FPRIME_DP = shutil.which("fprime-dp") or "fprime-dp"
 
 
 def resolve_repo_path(path: Path) -> Path:
@@ -56,7 +62,7 @@ def parse_args() -> argparse.Namespace:
 def decode_file(bin_file: Path, dictionary: Path) -> None:
     output_file = bin_file.with_suffix(".json")
     command = [
-        "fprime-dp",
+        str(FPRIME_DP),
         "decode",
         "--bin-file",
         str(bin_file),
@@ -74,9 +80,10 @@ def main() -> int:
     watch_dir = resolve_repo_path(args.watch_dir)
     dictionary = resolve_repo_path(args.dictionary)
 
-    if shutil.which("fprime-dp") is None:
+    if not Path(FPRIME_DP).is_file() and shutil.which(str(FPRIME_DP)) is None:
         print(
-            "fprime-dp was not found on PATH. Activate the project venv before running this script.",
+            f"fprime-dp was not found (looked for {FPRIME_DP}). "
+            "Activate the project venv before running this script.",
             file=sys.stderr,
         )
         return 1

@@ -7,7 +7,7 @@ unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 unit_file="$unit_dir/beehive-dpcat-decode.service"
 watch_script="$repo_root/tools/watch_dpcat_decode.py"
 venv_python="$repo_root/fprime-venv/bin/python"
-dictionary="$repo_root/build-artifacts/Linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
+dictionary="$repo_root/build-artifacts/arm-hf-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
 
 if [[ ! -x "$venv_python" ]]; then
     echo "Missing Python venv executable: $venv_python" >&2
