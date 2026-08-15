@@ -22,7 +22,7 @@ EXPOSE 50000 5000
 
 ENTRYPOINT ["fprime-gds"]
 CMD ["--no-app", \
-     "-d", "/app/build-artifacts/arm-hf-linux/BeeDeployment", \
+     "-d", "/app/build-artifacts/aarch64-linux/BeeDeployment", \
      "--gui-addr", "0.0.0.0", \
      "--ip-address", "0.0.0.0", \
      "--file-storage-directory", "/data", \
