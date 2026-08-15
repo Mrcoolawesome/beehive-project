@@ -68,9 +68,9 @@ module BeeDeployment {
 
   instance timer: Svc.LinuxTimer base id 0x10013000
 
-  # TcpClient: for running in local dev environment because we want the local build to act as the client & server which it will when we run the GDS
-  # TcpServer: for running on the actual pi
-  # TODO: I might be wrong about this and have this backwards
+  # TcpClient: always, for both local dev and the Pi deployment. The GDS
+  # (run via `fprime-gds --ip-address 0.0.0.0`) is the TCP server that binds
+  # and listens on the comm port; this deployment dials into it via -a/-p.
   instance comDriver: Drv.TcpClient base id 0x10014000
 
   instance wiiBoardManager: Components.WiiBoardManager base id 0x10015000
