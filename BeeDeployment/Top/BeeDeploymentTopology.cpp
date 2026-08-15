@@ -10,6 +10,7 @@
 
 // Necessary project-specified types
 #include <Fw/Types/MallocAllocator.hpp>
+#include <Fw/Types/String.hpp>
 
 // Public functions for use in main program are namespaced with deployment module BeeDeployment
 // This is also the namespace where the topology components are instantiated by FPP.
@@ -30,6 +31,15 @@ U32 rateGroup3Context[Svc::ActiveRateGroup::CONNECTION_COUNT_MAX] = {};
 enum TopologyConstants {
     COMM_PRIORITY = 34,
 };
+
+// DpCatalog (dpCat) never downlinks a data product on its own - it requires
+// an explicit BUILD_CATALOG + START_XMIT_CATALOG command, or newly-written
+// files just accumulate on local disk forever. This sequence file (compiled
+// with fprime-seqgen from BeeDeployment/boot_dp_downlink.seq) sends both, so
+// downlink starts automatically instead of needing a ground command every
+// time the deployment restarts. Must sit next to the running binary's
+// working directory - CmdSequencer resolves it relative to the process CWD.
+constexpr const char* BOOT_DP_DOWNLINK_SEQUENCE = "boot_dp_downlink.bin";
 
 /**
  * \brief configure/setup components in project-specific way
@@ -71,6 +81,12 @@ void setupTopology(const TopologyState& state) {
     loadParameters();
     // Autocoded task kick-off (active components). Function provided by autocoder.
     startTasks(state);
+    // Kick off the boot sequence that starts data-product downlink (see
+    // BOOT_DP_DOWNLINK_SEQUENCE above). Invoking cmdSeq's seqRunIn port
+    // directly, rather than waiting for a ground command, is what makes
+    // this happen automatically on every startup.
+    Fw::String bootDpDownlinkSequence(BOOT_DP_DOWNLINK_SEQUENCE);
+    cmdSeq.get_seqRunIn_InputPort(0)->invoke(bootDpDownlinkSequence);
     // Initialize socket communication if and only if there is a valid specification
     if (state.hostname != nullptr && state.port != 0) {
         Os::TaskString name("ReceiveTask");
