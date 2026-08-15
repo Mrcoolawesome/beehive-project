@@ -9,9 +9,11 @@
 
 #include "Components/WiiBoardManager/WiiBoardManagerComponentAc.hpp"
 
+#include <atomic>
 #include <cstddef>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <array>
 
@@ -85,6 +87,20 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
     //! Send a sequence of bluetoothctl commands
     bool sendBluetoothCommands(const char* const* commands, std::size_t count);
 
+    //! Run a full trust/pair/connect attempt, giving the (pre-SSP) board's
+    //! over-the-air pairing handshake real time to complete before quitting
+    bool attemptPairing(const std::string& trustCommand,
+                        const std::string& pairCommand,
+                        const std::string& connectCommand);
+
+    //! Connect to a board that's already paired/trusted, giving the HID
+    //! session real time to come up before quitting
+    bool attemptConnectOnly(const std::string& connectCommand);
+
+    //! Run a (potentially many-second) bluetoothctl attempt on a background
+    //! thread so it doesn't stall the rate group this component runs on
+    void runBluetoothAttempt(bool alreadyPaired);
+
     //! Mark the board as connected and raise the connection event once
     void notifyConnectedIfNeeded();
 
@@ -115,6 +131,11 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
     bool m_archivePending;
     bool m_weightDirty;
     U32 m_connectedSecondsRemaining;
+    U32 m_pairingRetryCooldown;
+    bool m_bootPairingModeResolved;
+    bool m_boardPairedAtBoot;
+    std::atomic<bool> m_bluetoothAttemptInProgress;
+    std::thread m_bluetoothWorker;
     std::array<F32, SESSION_SAMPLE_CAPACITY> m_sessionSamples;
     U32 m_sessionSampleCount;
     DpContainer m_sessionDpContainer;

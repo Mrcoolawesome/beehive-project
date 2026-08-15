@@ -23,6 +23,22 @@ constexpr const char* BOARD_NAME = "Nintendo Wii Remote Balance Board";
 constexpr const char* BOARD_ADDRESS = "00:1F:32:22:03:BF";
 constexpr U32 CONNECTED_SESSION_SECONDS = 60U;
 
+// The balance board predates Secure Simple Pairing, so the over-the-air
+// pairing handshake is slower than a modern device's and needs real wall
+// time to finish rather than being torn down as soon as commands are
+// written to bluetoothctl's stdin.
+constexpr unsigned int PAIRING_HANDSHAKE_SECONDS = 8U;
+constexpr unsigned int PAIRING_CONNECT_SETTLE_SECONDS = 2U;
+// The board only becomes a known/pairable Device object to bluetoothd after
+// an active inquiry scan finds it - without this, `trust`/`pair`/`connect`
+// all fail instantly with "Device ... not available" instead of actually
+// attempting anything over the air.
+constexpr unsigned int DISCOVERY_SCAN_SECONDS = 10U;
+// Minimum gap between fresh trust/pair/connect attempts (in 1 Hz run_handler
+// ticks) so a new bluetoothctl process isn't launched on top of one that's
+// still mid-handshake.
+constexpr U32 PAIRING_RETRY_COOLDOWN_TICKS = 15U;
+
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -40,11 +56,20 @@ WiiBoardManager ::WiiBoardManager(const char* const compName)
             m_archivePending(false),
             m_weightDirty(false),
             m_connectedSecondsRemaining(0U),
+            m_pairingRetryCooldown(0U),
+            m_bootPairingModeResolved(false),
+            m_boardPairedAtBoot(false),
+            m_bluetoothAttemptInProgress(false),
             m_sessionSamples{},
             m_sessionSampleCount(0U),
             m_sessionDpContainer() {}
 
-WiiBoardManager ::~WiiBoardManager() { this->closeBoard(); }
+WiiBoardManager ::~WiiBoardManager() {
+    if (this->m_bluetoothWorker.joinable()) {
+        this->m_bluetoothWorker.join();
+    }
+    this->closeBoard();
+}
 
 // ----------------------------------------------------------------------
 // Handler implementations for typed input ports
@@ -117,6 +142,68 @@ bool WiiBoardManager ::sendBluetoothCommands(const char* const* commands, std::s
     (void)::fprintf(pipe, "quit\n");
     int closeStatus = ::pclose(pipe);
     return writeOk && closeStatus != -1;
+}
+
+bool WiiBoardManager ::attemptPairing(const std::string& trustCommand,
+                                      const std::string& pairCommand,
+                                      const std::string& connectCommand) {
+    FILE* pipe = ::popen("bluetoothctl", "w");
+    if (pipe == nullptr) {
+        return false;
+    }
+
+    // Bring the board into bluetoothd's known-device cache first - `trust`/
+    // `pair` fail instantly with "not available" against a device that
+    // hasn't been (re)discovered, they don't just wait/retry on their own.
+    bool writeOk = ::fprintf(pipe, "scan on\n") >= 0;
+    ::fflush(pipe);
+    ::sleep(DISCOVERY_SCAN_SECONDS);
+    writeOk = writeOk && ::fprintf(pipe, "scan off\n") >= 0;
+    ::fflush(pipe);
+
+    writeOk = writeOk && ::fprintf(pipe, "%s\n", trustCommand.c_str()) >= 0;
+    writeOk = writeOk && ::fprintf(pipe, "%s\n", pairCommand.c_str()) >= 0;
+    ::fflush(pipe);
+    // Give bluetoothd time to actually complete the legacy pairing
+    // handshake with the board before anything tells bluetoothctl to quit.
+    ::sleep(PAIRING_HANDSHAKE_SECONDS);
+
+    writeOk = writeOk && ::fprintf(pipe, "%s\n", connectCommand.c_str()) >= 0;
+    ::fflush(pipe);
+    ::sleep(PAIRING_CONNECT_SETTLE_SECONDS);
+
+    (void)::fprintf(pipe, "quit\n");
+    int closeStatus = ::pclose(pipe);
+    return writeOk && closeStatus != -1;
+}
+
+bool WiiBoardManager ::attemptConnectOnly(const std::string& connectCommand) {
+    FILE* pipe = ::popen("bluetoothctl", "w");
+    if (pipe == nullptr) {
+        return false;
+    }
+
+    bool writeOk = ::fprintf(pipe, "%s\n", connectCommand.c_str()) >= 0;
+    ::fflush(pipe);
+    ::sleep(PAIRING_CONNECT_SETTLE_SECONDS);
+
+    (void)::fprintf(pipe, "quit\n");
+    int closeStatus = ::pclose(pipe);
+    return writeOk && closeStatus != -1;
+}
+
+void WiiBoardManager ::runBluetoothAttempt(bool alreadyPaired) {
+    const std::string connectCommand = std::string("connect ") + BOARD_ADDRESS;
+
+    if (alreadyPaired) {
+        (void)this->attemptConnectOnly(connectCommand);
+    } else {
+        const std::string trustCommand = std::string("trust ") + BOARD_ADDRESS;
+        const std::string pairCommand = std::string("pair ") + BOARD_ADDRESS;
+        (void)this->attemptPairing(trustCommand, pairCommand, connectCommand);
+    }
+
+    this->m_bluetoothAttemptInProgress = false;
 }
 
 void WiiBoardManager ::notifyConnectedIfNeeded() {
@@ -219,23 +306,48 @@ void WiiBoardManager ::maintainBluetoothConnection() {
 
     this->log_ACTIVITY_HI_BluetoothReconnectAttempt();
 
-    WiiBoardBluetoothStatus status{};
-    bool statusKnown = this->queryBluetoothStatus(status);
+    // Resolve once, at first use after boot, whether the board already came
+    // paired/trusted (bonding persists in bluetoothd's own storage across
+    // reboots). That one-time result decides which mode this deployment
+    // stays in for the rest of its runtime: keep running the full
+    // trust/pair/connect setup sequence, or just keep trying to connect to
+    // an already-known device.
+    if (!this->m_bootPairingModeResolved) {
+        WiiBoardBluetoothStatus status{};
+        bool statusKnown = this->queryBluetoothStatus(status);
+        this->m_boardPairedAtBoot = statusKnown && status.paired && status.trusted;
+        this->m_bootPairingModeResolved = true;
+    }
 
-    const std::string trustCommand = std::string("trust ") + BOARD_ADDRESS;
-    const std::string pairCommand = std::string("pair ") + BOARD_ADDRESS;
-    const std::string connectCommand = std::string("connect ") + BOARD_ADDRESS;
-
-    if (statusKnown && status.paired && status.trusted) {
-        this->log_ACTIVITY_HI_BluetoothConnectAttempt();
-        const char* commands[] = {connectCommand.c_str()};
-        (void)this->sendBluetoothCommands(commands, 1U);
+    // A background attempt (scan/pair/connect, up to ~20s) may already be
+    // in flight from a previous tick - don't pile another one on top of it.
+    if (this->m_bluetoothAttemptInProgress.load()) {
         return;
     }
 
-    this->log_ACTIVITY_HI_BluetoothSetupAttempt();
-    const char* commands[] = {trustCommand.c_str(), pairCommand.c_str(), connectCommand.c_str()};
-    (void)this->sendBluetoothCommands(commands, 3U);
+    // Only kick off a fresh attempt once any prior one has had its cooldown
+    // period to actually resolve.
+    if (this->m_pairingRetryCooldown > 0U) {
+        --this->m_pairingRetryCooldown;
+        return;
+    }
+    this->m_pairingRetryCooldown = PAIRING_RETRY_COOLDOWN_TICKS;
+
+    if (this->m_bluetoothWorker.joinable()) {
+        this->m_bluetoothWorker.join();
+    }
+
+    if (this->m_boardPairedAtBoot) {
+        this->log_ACTIVITY_HI_BluetoothConnectAttempt();
+    } else {
+        this->log_ACTIVITY_HI_BluetoothSetupAttempt();
+    }
+
+    // The scan/pair/connect sequence blocks on real over-the-air wall time
+    // (up to ~20s); run it on a background thread instead of this rate
+    // group's thread so it can't stall telemetry, file downlink, etc.
+    this->m_bluetoothAttemptInProgress = true;
+    this->m_bluetoothWorker = std::thread(&WiiBoardManager::runBluetoothAttempt, this, this->m_boardPairedAtBoot);
 }
 
 bool WiiBoardManager ::openBoard() {
