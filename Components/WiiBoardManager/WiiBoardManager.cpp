@@ -49,8 +49,6 @@ WiiBoardManager ::WiiBoardManager(const char* const compName)
         : WiiBoardManagerComponentBase(compName),
             m_boardFd(-1),
             m_lastWeightKg(0.0f),
-            m_tareKg(3.80f),
-            m_scaleFactor(1.30f),
             m_connectionEventRaised(false),
             m_sessionActive(false),
             m_archivePending(false),
@@ -282,23 +280,6 @@ void WiiBoardManager ::dpRecv_WeightSessionContainer_handler(DpContainer& contai
     this->m_sessionSamples.fill(0.0f);
 }
 
-void WiiBoardManager ::parameterUpdated(FwPrmIdType id) {
-    switch (id) {
-        case PARAMID_TAREKG: {
-            Fw::ParamValid valid;
-            this->m_tareKg = this->paramGet_tareKg(valid);
-            break;
-        }
-        case PARAMID_SCALEFACTOR: {
-            Fw::ParamValid valid;
-            this->m_scaleFactor = this->paramGet_scaleFactor(valid);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
 void WiiBoardManager ::maintainBluetoothConnection() {
     if (this->m_boardFd >= 0 || this->m_archivePending) {
         return;
@@ -416,12 +397,7 @@ void WiiBoardManager ::processAbsEvent(unsigned int code, int value) {
         }
 
         F32 rawWeightKg = static_cast<F32>(rawWeight) / 100.0f;
-        F32 calibratedWeightKg = (rawWeightKg - this->m_tareKg) * this->m_scaleFactor;
-        if (calibratedWeightKg < 0.0f) {
-            calibratedWeightKg = 0.0f;
-        }
-
-        this->m_lastWeightKg = calibratedWeightKg;
+        this->m_lastWeightKg = rawWeightKg;
     }
 }
 

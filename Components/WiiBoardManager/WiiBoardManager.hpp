@@ -116,16 +116,11 @@ class WiiBoardManager final : public WiiBoardManagerComponentBase {
     //! Receive a data product container and serialize the archived session into it
     void dpRecv_WeightSessionContainer_handler(DpContainer& container, Fw::Success::T status) override;
 
-    //! Update cached calibration values when parameters change
-    void parameterUpdated(FwPrmIdType id) override;
-
   private:
     int m_boardFd;
     std::string m_boardPath;
     std::unordered_map<unsigned int, int> m_sensorValues;
     F32 m_lastWeightKg;
-    F32 m_tareKg;
-    F32 m_scaleFactor;
     bool m_connectionEventRaised;
     bool m_sessionActive;
     bool m_archivePending;

@@ -59,30 +59,21 @@ Following the mandated architecture, the Wii Balance Board integration will be s
 * Handles high-level business logic (e.g., triggering alerts if the hive weight drops rapidly).
 * Packages and dispatches the final telemetry packets to the F' communications layer for streaming to the server.
 
-## 5. Wii Board Calibration
+## 5. Wii Board Weight Reading
 
-The Wii board manager applies calibration in this order:
+The Wii board manager reports the board's raw reading, untouched:
 
 1. Sum the four raw sensor values from the Linux input device.
-2. Convert that sum into the board's raw kilogram-like value by dividing by 100.
-3. Subtract the tare offset from the empty board.
-4. Multiply the result by the scale factor.
+2. Convert that sum into kilograms by dividing by 100.
 
-The formula in code is:
-
-`calibratedWeightKg = max(0, (rawWeightKg - tareKg) * scaleFactor)`
-
-Where:
-
-* `tareKg` removes the resting bias when the board is empty.
-* `scaleFactor` corrects the linear gain so the board matches a known reference weight.
-
-To set them properly:
-
-* Put the board on a flat surface with nothing on it and read the resting value. Set `tareKg` to that number.
-* Put a known test weight on the board and compare the reading after tare correction. Adjust `scaleFactor` so the adjusted reading matches the known weight.
-
-Example: if the board reads about 3.8 kg when empty, and about 5.8 kg when you place a 5 lb test weight on it, you would first set `tareKg` to 3.8. Then compute `scaleFactor` from the corrected reading using `knownWeight / (rawWeightKg - tareKg)`. The result will not be perfect across the full range if the board is nonlinear, but it is the correct way to apply a single linear scale factor.
+That's it — no tare offset or scale factor is applied on the flight side.
+There used to be a `tareKg`/`scaleFactor` calibration step here, but what it
+was actually correcting for turned out to be the board sitting on carpet,
+not anything wrong with the raw reading itself. Flight software has no way
+to know what surface the board is on, so any tare/scale correction belongs
+downstream (in the beehive-monitoring-app dashboard, or applied by whoever's
+reading the data) where it can be changed without a firmware rebuild, not
+baked into what gets sent off the Pi.
 
 ## 6. Data Products
 

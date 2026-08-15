@@ -86,12 +86,6 @@ module Components {
         @Port to set the value of a parameter
         param set port prmSetOut
 
-        @ Empty-board tare in kilograms
-        param tareKg: F32 default 3.80 id 0
-
-        @ Scale factor applied after tare correction
-        param scaleFactor: F32 default 1.30 id 1
-
         @ Session archive sample buffer
         array WeightSessionSamples = [SESSION_SAMPLE_CAPACITY] F32
 
