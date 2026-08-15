@@ -14,17 +14,19 @@ services:
       - "50000:50000"  # comm link for the Raspberry Pi's BeeDeployment binary to connect into
       - "5000:5000"    # GDS web GUI
     volumes:
-      # Dictionary/hashes built on the host via `fprime-util build arm-hf-linux` (see README).
+      # Dictionary/hashes built on the host via `fprime-util build aarch64-linux` (see README).
       # Read-only: the container only reads the deployment's dictionary, it never rebuilds it.
       - ./build-artifacts:/app/build-artifacts:ro
-      # Downlinked data products land here, on real host disk, matching the DpCat/ directory
-      # already watched by tools/watch_dpcat_decode.py.
+      # Downlinked data products land here, on real host disk. fprime-gds
+      # writes them under a fixed "fprime-downlink" subdirectory of this
+      # mount (i.e. DpCat/fprime-downlink/, not directly in DpCat/) - that's
+      # the path tools/watch_dpcat_decode.py actually watches.
       - ./DpCat:/data
       - ./logs:/app/logs
     restart: unless-stopped
 
   # GDS (above) only writes the raw .fdp data-product files it downlinks
-  # from the Pi into DpCat/ — turning those into the sibling .json files
+  # from the Pi into DpCat/fprime-downlink/ — turning those into the sibling .json files
   # anything downstream (e.g. the beehive-monitoring-app watcher) actually
   # reads is a separate decode step, done here by tools/watch_dpcat_decode.py.
   # That script isn't baked into the image itself (the Dockerfile only

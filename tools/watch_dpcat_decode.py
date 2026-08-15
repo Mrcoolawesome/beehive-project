@@ -17,8 +17,11 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent
-DEFAULT_WATCH_DIR = REPO_ROOT / "DpCat"
-DEFAULT_DICTIONARY = REPO_ROOT / "build-artifacts/arm-hf-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
+# fprime-gds files everything it downlinks under a fixed "fprime-downlink"
+# subdirectory of --file-storage-directory (DpCat/, per docker-compose.yml)
+# - it never writes directly into DpCat/ itself.
+DEFAULT_WATCH_DIR = REPO_ROOT / "DpCat" / "fprime-downlink"
+DEFAULT_DICTIONARY = REPO_ROOT / "build-artifacts/aarch64-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json"
 
 # Resolve fprime-dp next to the running interpreter first so this still works when
 # launched outside an activated venv shell (e.g. under systemd, where PATH is minimal).
@@ -115,8 +118,13 @@ def main() -> int:
             time.sleep(args.poll_interval)
             continue
 
+        # iterdir(), not glob("*.fdp") - fprime-gds's FileDownlinker.sanitize()
+        # turns any "/" in the flight-side source path into "_", and this
+        # deployment's dp directory is configured as "./DpCat", so downlinked
+        # filenames start with "._" (e.g. "._DpCat_Dp_...fdp"). glob's "*"
+        # doesn't match a leading dot, so it would silently skip every file.
         current_files = sorted(
-            (path for path in watch_dir.glob("*.fdp") if path.is_file()),
+            (path for path in watch_dir.iterdir() if path.is_file() and path.suffix == ".fdp"),
             key=lambda path: (path.stat().st_mtime_ns, path.name),
         )
 
