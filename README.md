@@ -96,8 +96,8 @@ In practice, this means:
 * Use data products when you want the full one-minute capture saved for later inspection in GDS.
 * The archive is sent after the timed session ends, not continuously during the minute.
 
-For the GDS/server machine, you can run [tools/watch_dpcat_decode.py](tools/watch_dpcat_decode.py) from the project venv to watch `DpCat/` and auto-decode any new `.fdp` files into sibling JSON files.
-By default it uses `build-artifacts/arm-hf-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json`, matching the 32-bit ARM (Raspberry Pi) deployment build that actually runs on the hive node; pass `--dictionary` to point at a different build platform's dictionary (e.g. `Linux` for the native dev build) if needed.
+For the GDS/server machine, you can run [tools/watch_dpcat_decode.py](tools/watch_dpcat_decode.py) from the project venv to watch `DpCat/fprime-downlink/` (where `fprime-gds` actually writes downlinked data products - not `DpCat/` itself) and auto-decode any new `.fdp` files into sibling JSON files.
+By default it uses `build-artifacts/aarch64-linux/BeeDeployment/dict/BeeDeploymentTopologyDictionary.json`, matching the 64-bit ARM (Raspberry Pi) deployment build that actually runs on the hive node; pass `--dictionary` to point at a different build platform's dictionary (e.g. `Linux` for the native dev build) if needed.
 
 If you want it to start automatically for a user, run [tools/install_watch_dpcat_decode_service.sh](tools/install_watch_dpcat_decode_service.sh). That script creates a per-user systemd service from the current checkout, reloads systemd, and enables/starts the watcher.
 After installing it, the service name is `beehive-dpcat-decode.service` under `systemctl --user`. If you want it to keep running after logout, enable lingering for that user with `loginctl enable-linger <user>`.
@@ -109,7 +109,7 @@ After installing it, the service name is `beehive-dpcat-decode.service` under `s
 The GDS/server side can run in a container instead of the local venv. Build the ARM deployment on the host first (the container only reads its output, it does not build):
 
 ```
-fprime-util build arm-hf-linux
+fprime-util build aarch64-linux
 ```
 
 Then start the GDS:
@@ -126,7 +126,7 @@ This runs `fprime-gds --no-app` (the flight binary runs on the Raspberry Pi itse
 Volumes keep real data on the host instead of the container's ephemeral filesystem:
 
 * `./build-artifacts` (read-only) - supplies the dictionary/hashes built above
-* `./DpCat` - where downlinked data products land, the same directory `tools/watch_dpcat_decode.py` already watches
+* `./DpCat` - where downlinked data products land (under `DpCat/fprime-downlink/`, per `fprime-gds`'s own convention), the same directory `tools/watch_dpcat_decode.py` already watches
 * `./logs` - GDS run logs
 
 The same `docker compose up -d --build` also starts a `decoder` service — the
@@ -139,5 +139,45 @@ service the [beehive-monitoring-app](https://github.com/Mrcoolawesome/beehive-mo
 dashboard's own `docker-compose.yml` pulls in via `include:`, so that
 project's `docker compose up` brings up GDS + decoder + the dashboard
 together in one command.
+
+## 8. Deploying to the Pi and running BeeDeployment on boot
+
+The Pi only ever needs two files from a build, kept together in the same
+directory: the `aarch64-linux` `BeeDeployment` binary, and
+`BeeDeployment/boot_dp_downlink.bin` — a compiled command sequence that gets
+run automatically on every startup to kick off data-product downlink (see
+section 6; without it, data products just pile up on the Pi's local disk and
+never reach the ground). Both are required — `BeeDeployment` alone will run
+fine, it just won't downlink anything until `BUILD_CATALOG` /
+`START_XMIT_CATALOG` are sent by hand.
+
+From the dev machine, after `fprime-util build aarch64-linux`, copy both
+over with [tools/deploy_to_pi.sh](tools/deploy_to_pi.sh):
+
+```
+tools/deploy_to_pi.sh pi@<pi-host>
+```
+
+It uploads to temp filenames and renames into place rather than writing
+directly over `BeeDeployment`, so it's safe to run again even while a
+previous copy is actively running (a direct overwrite of a running
+executable fails with `ETXTBSY`).
+
+To have `BeeDeployment` start automatically on every boot instead of being
+run by hand, run [tools/install_beedeployment_service.sh](tools/install_beedeployment_service.sh)
+**on the Pi itself**, from the same directory the two files above were
+deployed to:
+
+```
+./install_beedeployment_service.sh [gds-host] [gds-port] [user]
+```
+
+All three arguments are optional (defaults: `100.122.230.118`, `50000`, the
+invoking user). This creates a system-wide `systemd` service
+(`beedeployment.service`) that starts on boot, restarts on failure, and logs
+to the journal — watch it with `journalctl -u beedeployment -f`. If a copy
+of `BeeDeployment` is already running by hand when you install the service,
+stop it first (`kill` the process, or just reboot) so you don't end up with
+two instances both connected to GDS and fighting over the Bluetooth board.
 
 Stop it with `docker compose down`.
